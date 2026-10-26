@@ -1,0 +1,48 @@
+name: Aggiorna gpl.json
+
+on:
+  # Ogni giorno alle 08:00 UTC = 09:00 in inverno, 10:00 in estate (ora italiana)
+  schedule:
+    - cron: "0 8 * * *"
+  # Permette di avviarlo a mano dal sito GitHub (scheda Actions)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un solo deploy alla volta
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  genera-e-pubblica:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v4
+
+      - name: Installa Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Genera gpl.json
+        run: node scripts/genera-gpl.mjs --out public/gpl.json
+
+      - name: Prepara Pages
+        uses: actions/configure-pages@v5
+
+      - name: Carica la cartella public
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Pubblica su GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
