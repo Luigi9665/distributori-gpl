@@ -1,0 +1,8 @@
+2026-10-26T10:05:02.5140000Z Evaluating genera-e-pubblica.if
+2026-10-26T10:05:02.5140000Z Evaluating: success()
+2026-10-26T10:05:02.5140000Z Result: true
+2026-10-26T10:05:02.6390000Z Requested labels: ubuntu-latest
+2026-10-26T10:05:02.6390000Z Job defined at: Luigi9665/distributori-gpl/.github/workflows/aggiorna-gpl.yml@refs/heads/main
+2026-10-26T10:05:02.6390000Z Waiting for a runner to pick up this job...
+2026-10-26T10:05:02.9070000Z Job is waiting for a hosted runner to come online.
+2026-10-26T10:05:02.9080000Z Job is about to start running on the hosted runner: GitHub Actions 1000000000

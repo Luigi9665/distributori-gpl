@@ -1,0 +1,7 @@
+﻿2026-10-26T10:05:09.3567136Z ##[group]Run node scripts/genera-gpl.mjs --out public/gpl.json
+2026-10-26T10:05:09.3567481Z [36;1mnode scripts/genera-gpl.mjs --out public/gpl.json[0m
+2026-10-26T10:05:09.3838521Z shell: /usr/bin/bash -e {0}
+2026-10-26T10:05:09.3838710Z ##[endgroup]
+2026-10-26T10:05:09.4116418Z Scarico i CSV dal sito MIMIT...
+2026-10-26T10:05:19.9319679Z ERRORE: fetch failed
+2026-10-26T10:05:19.9367775Z ##[error]Process completed with exit code 1.

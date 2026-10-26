@@ -26,17 +26,40 @@ const GIORNI_MAX = 30;
 // Limiti approssimativi dell'Italia: fuori da qui le coordinate sono sbagliate.
 const LAT_MIN = 35.3, LAT_MAX = 47.2, LON_MIN = 6.5, LON_MAX = 18.9;
 
+// Scarica con qualche tentativo e mostra la causa vera dell'errore di rete.
+async function scarica(url, nomeFile) {
+  const TENTATIVI = 3;
+  let ultimoErrore;
+  for (let i = 1; i <= TENTATIVI; i++) {
+    try {
+      const risposta = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+          Accept: "text/csv,text/plain,*/*",
+          "Accept-Language": "it-IT,it;q=0.9",
+        },
+        signal: AbortSignal.timeout(60000),
+      });
+      if (!risposta.ok) {
+        throw new Error(`HTTP ${risposta.status}`);
+      }
+      return await risposta.text();
+    } catch (e) {
+      const causa = e.cause ? ` (${e.cause.code || e.cause.message})` : "";
+      ultimoErrore = new Error(`Download di ${nomeFile} fallito: ${e.message}${causa}`);
+      console.log(`Tentativo ${i}/${TENTATIVI} fallito: ${ultimoErrore.message}`);
+      if (i < TENTATIVI) await new Promise((r) => setTimeout(r, 5000 * i));
+    }
+  }
+  throw ultimoErrore;
+}
+
 async function leggiCsv(nomeFile) {
   if (usaLocale) {
     return readFile(join(cartellaDati, nomeFile), "utf8");
   }
-  const risposta = await fetch(`${BASE_URL}/${nomeFile}`, {
-    headers: { "User-Agent": "Mozilla/5.0 (distributori-gpl)" },
-  });
-  if (!risposta.ok) {
-    throw new Error(`Download di ${nomeFile} fallito: HTTP ${risposta.status}`);
-  }
-  const testo = await risposta.text();
+  const testo = await scarica(`${BASE_URL}/${nomeFile}`, nomeFile);
   await mkdir(cartellaDati, { recursive: true });
   await writeFile(join(cartellaDati, nomeFile), testo, "utf8");
   return testo;
