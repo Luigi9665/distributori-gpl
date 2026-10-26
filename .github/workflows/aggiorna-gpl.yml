@@ -1,9 +1,14 @@
-name: Aggiorna gpl.json
+name: Pubblica gpl.json
 
+# Il sito MIMIT blocca i server di GitHub, quindi gpl.json viene generato sul PC
+# (scripts/aggiorna-e-pubblica.ps1) e caricato in dati/gpl.json.
+# Questo workflow lo pubblica su GitHub Pages ad ogni aggiornamento.
 on:
-  # Ogni giorno alle 08:00 UTC = 09:00 in inverno, 10:00 in estate (ora italiana)
-  schedule:
-    - cron: "0 8 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "dati/gpl.json"
+      - ".github/workflows/aggiorna-gpl.yml"
   # Permette di avviarlo a mano dal sito GitHub (scheda Actions)
   workflow_dispatch:
 
@@ -18,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  genera-e-pubblica:
+  pubblica:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -27,13 +32,13 @@ jobs:
       - name: Scarica il codice
         uses: actions/checkout@v4
 
-      - name: Installa Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Controlla che gpl.json esista
+        run: test -s dati/gpl.json
 
-      - name: Genera gpl.json
-        run: node scripts/genera-gpl.mjs --out public/gpl.json
+      - name: Prepara la cartella da pubblicare
+        run: |
+          mkdir public
+          cp dati/gpl.json public/gpl.json
 
       - name: Prepara Pages
         uses: actions/configure-pages@v5

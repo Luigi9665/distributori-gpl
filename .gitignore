@@ -1,5 +1,4 @@
-﻿data/
-public/
+data/
 node_modules/
 .expo/
-
+aggiornamento.log
