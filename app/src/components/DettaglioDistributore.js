@@ -1,15 +1,15 @@
-import { ScrollView, StyleSheet, View } from "react-native";
-import { spazi, useStili } from "../theme/tema";
+import { StyleSheet, View } from "react-native";
+import { raggi, spazi, useStili } from "../theme/tema";
 import { formattaKm, formattaPrezzo } from "../utils/geo";
 import Badge from "./Badge";
 import Bottone from "./Bottone";
 import Testo from "./Testo";
 
-// Scheda con i dettagli del distributore scelto.
+// Card con i dettagli del distributore scelto (si mette dentro la scheda scorrevole).
 export default function DettaglioDistributore({ distributore: d, piuEconomico = false, onVai, onChiudi }) {
   const stili = useStili(creaStili);
   return (
-    <ScrollView contentContainerStyle={stili.contenuto}>
+    <View style={stili.card}>
       <View style={stili.intestazione}>
         <Testo variante="sottotitolo" style={{ flex: 1 }}>
           {d.nome || d.marchio}
@@ -28,15 +28,22 @@ export default function DettaglioDistributore({ distributore: d, piuEconomico = 
       </Testo>
       <View style={stili.azioni}>
         <Bottone titolo="Portami lì" onPress={onVai} pienaLarghezza />
-        <Bottone titolo="Chiudi" variante="secondario" onPress={onChiudi} pienaLarghezza />
+        <Bottone titolo="Torna alla lista" variante="secondario" onPress={onChiudi} pienaLarghezza />
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
-const creaStili = () =>
+const creaStili = (t) =>
   StyleSheet.create({
-    contenuto: { padding: spazi.lg, gap: spazi.sm },
+    card: {
+      padding: spazi.lg,
+      gap: spazi.sm,
+      backgroundColor: t.superficie,
+      borderRadius: raggi.md,
+      borderWidth: 1,
+      borderColor: t.bordo,
+    },
     intestazione: { flexDirection: "row", alignItems: "center", gap: spazi.sm },
     azioni: { gap: spazi.sm, marginTop: spazi.md },
   });

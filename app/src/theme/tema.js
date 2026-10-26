@@ -3,7 +3,7 @@ import { useColorScheme } from "react-native";
 
 // Misure comuni: usale al posto di numeri sparsi nel codice.
 export const spazi = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
-export const raggi = { sm: 8, md: 12, pill: 999 };
+export const raggi = { sm: 8, md: 12, lg: 20, pill: 999 };
 export const altezzaMinimaTocco = 44; // misura minima consigliata per un'area toccabile
 
 const chiaro = {
