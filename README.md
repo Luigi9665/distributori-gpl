@@ -22,6 +22,18 @@ powershell -ExecutionPolicy Bypass -File scripts\crea-attivita-pianificata.ps1  
 cd app; npx expo start                              avvia l'app per Expo Go
 ```
 
+## Ricerca indirizzi
+La ricerca usa **Photon** (`https://photon.komoot.io/api`), un servizio gratuito e senza chiave basato sui dati di OpenStreetMap.
+Tutto il codice che lo riguarda sta in `app/src/services/geocoding.js`: per cambiare servizio basta modificare quel file.
+- La ricerca parte da sola dopo 3 caratteri e una pausa di circa mezzo secondo; "Cerca" e invio da tastiera cercano subito.
+- Fino a 8 risultati, solo in Italia, con precedenza ai luoghi vicini al punto di partenza.
+- Photon non supporta la lingua italiana come parametro: senza indicarla i nomi sono quelli locali, quindi in italiano.
+
+**Privacy.** Il testo cercato (e, per dare precedenza ai luoghi vicini, le coordinate del punto di partenza) viene inviato a Photon / OpenStreetMap. Va detto nell'informativa privacy dell'app.
+
+**Limiti.** Il Photon pubblico è adatto alle prove, non a molti utenti (ha limiti d'uso e nessuna garanzia di servizio).
+Prima della pubblicazione negli store va sostituito con un servizio intermedio nostro o con un servizio con chiave.
+
 ## Fonte dei dati e licenza
 Dati: **MIMIT - Osservaprezzi Carburanti**, open data rilasciati con licenza
 [IODL 2.0](https://www.dati.gov.it/iodl/2.0/). Il riuso, anche commerciale, è consentito citando la fonte.

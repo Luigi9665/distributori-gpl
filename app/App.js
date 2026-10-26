@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Linking, StyleSheet, View } from "react-native";
+import { Keyboard, Linking, StyleSheet, useWindowDimensions, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -34,7 +34,8 @@ const CENTRO_ITALIA = { lat: 42.5, lon: 12.5 };
 const RAGGIO_ITALIA_KM = 330;
 
 const MESSAGGI_RICERCA = {
-  vuoto: "Non trovo questo indirizzo. Prova con il comune, per esempio «Udine».",
+  cerca: "Cerco...",
+  vuoto: "Nessun risultato. Prova con il comune, per esempio «Udine».",
   errore: "Ricerca non disponibile. Controlla la connessione e riprova.",
 };
 
@@ -52,7 +53,7 @@ function Principale() {
   const stili = useStili(creaStili);
   const gps = usePosizione();
   const gpl = useDatiGpl();
-  const ricerca = useRicercaIndirizzo();
+  const { height: altezzaSchermo } = useWindowDimensions();
 
   const [raggio, setRaggio] = useState(10);
   const [ordine, setOrdine] = useState("distanza"); // distanza | prezzo
@@ -65,17 +66,29 @@ function Principale() {
   // Posizione della barra di ricerca, per ancorare l'elenco dei risultati sotto di essa
   const [yRicerca, setYRicerca] = useState(0);
   const [fondoBarra, setFondoBarra] = useState(0);
+  const [altezzaTastiera, setAltezzaTastiera] = useState(0);
   const mappa = useRef(null);
   const scheda = useRef(null);
 
-  // Quando la tastiera si chiude (anche col tasto Indietro) le ricerche recenti si nascondono
+  const origine = partenza || gps.posizione; // da qui si calcolano distanze, mappa e lista
+  // La ricerca dà la precedenza ai luoghi vicini al punto di partenza
+  const ricerca = useRicercaIndirizzo(origine);
+
+  // Quando la tastiera si chiude (anche col tasto Indietro) le ricerche recenti si nascondono.
+  // L'altezza della tastiera serve a non far finire l'elenco dei risultati sotto di essa.
   useEffect(() => {
-    const ascolto = Keyboard.addListener("keyboardDidHide", () => setMostraRecenti(false));
-    return () => ascolto.remove();
+    const mostra = Keyboard.addListener("keyboardDidShow", (e) => setAltezzaTastiera(e.endCoordinates?.height ?? 0));
+    const nascondi = Keyboard.addListener("keyboardDidHide", () => {
+      setMostraRecenti(false);
+      setAltezzaTastiera(0);
+    });
+    return () => {
+      mostra.remove();
+      nascondi.remove();
+    };
   }, []);
 
   const dati = gpl.dati;
-  const origine = partenza || gps.posizione; // da qui si calcolano distanze, mappa e lista
 
   // Distributori entro il raggio, con la distanza dall'origine
   const vicini = useMemo(() => {
@@ -179,9 +192,16 @@ function Principale() {
   // Senza GPS l'app funziona lo stesso: basta cercare un indirizzo.
   const senzaOrigine = !origine;
   const prossimoRaggio = RAGGI.find((r) => r > raggio);
-  const messaggioRicerca = MESSAGGI_RICERCA[ricerca.stato];
-  const vociRicerca =
-    ricerca.stato === "risultati" ? ricerca.risultati : mostraRecenti && !ricerca.testo ? ricerca.recenti : [];
+  // Mentre cerco restano visibili i risultati precedenti, così l'elenco non lampeggia a ogni lettera
+  const mostraRisultati = ricerca.stato === "risultati" || (ricerca.stato === "cerca" && ricerca.risultati.length > 0);
+  const messaggioRicerca = mostraRisultati ? undefined : MESSAGGI_RICERCA[ricerca.stato];
+  const vociRicerca = mostraRisultati ? ricerca.risultati : mostraRecenti && !ricerca.testo ? ricerca.recenti : [];
+  // Altezza massima dell'elenco: non supera la metà schermo e non finisce sotto la tastiera
+  const topRisultati = yRicerca + fondoBarra + spazi.xs;
+  const altezzaRisultati = Math.max(
+    160,
+    Math.min(altezzaSchermo * 0.5, altezzaSchermo - altezzaTastiera - topRisultati - spazi.lg)
+  );
 
   return (
     <Schermata>
@@ -202,10 +222,7 @@ function Principale() {
         <View onLayout={(e) => setFondoBarra(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
           <BarraRicerca
             valore={ricerca.testo}
-            onCambia={(t) => {
-              ricerca.setTesto(t);
-              if (ricerca.stato !== "fermo") ricerca.chiudi();
-            }}
+            onCambia={ricerca.setTesto}
             onInvia={avviaRicerca}
             onPulisci={ricerca.pulisci}
             onFocus={() => setMostraRecenti(true)}
@@ -315,17 +332,18 @@ function Principale() {
       {(vociRicerca.length > 0 || messaggioRicerca) && (
         <ElencoRisultati
           titolo={
-            ricerca.stato === "risultati" ? "Risultati" : vociRicerca.length ? "Ricerche recenti" : undefined
+            mostraRisultati ? "Risultati" : vociRicerca.length ? "Ricerche recenti" : undefined
           }
           azione={
-            ricerca.stato !== "risultati" && vociRicerca.length
+            !mostraRisultati && vociRicerca.length
               ? { titolo: "Cancella cronologia", onPress: ricerca.cancellaRecenti }
               : undefined
           }
           voci={vociRicerca}
           messaggio={messaggioRicerca}
+          altezzaMassima={altezzaRisultati}
           onScegli={scegliLuogo}
-          style={[stili.risultati, { top: yRicerca + fondoBarra + spazi.xs }]}
+          style={[stili.risultati, { top: topRisultati }]}
         />
       )}
     </Schermata>
