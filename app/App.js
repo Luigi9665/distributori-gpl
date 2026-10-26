@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Linking, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
@@ -62,8 +62,17 @@ function Principale() {
   // Punto di partenza scelto con la ricerca. null = si usa la posizione GPS.
   const [partenza, setPartenza] = useState(null);
   const [mostraRecenti, setMostraRecenti] = useState(false);
+  // Posizione della barra di ricerca, per ancorare l'elenco dei risultati sotto di essa
+  const [yRicerca, setYRicerca] = useState(0);
+  const [fondoBarra, setFondoBarra] = useState(0);
   const mappa = useRef(null);
   const scheda = useRef(null);
+
+  // Quando la tastiera si chiude (anche col tasto Indietro) le ricerche recenti si nascondono
+  useEffect(() => {
+    const ascolto = Keyboard.addListener("keyboardDidHide", () => setMostraRecenti(false));
+    return () => ascolto.remove();
+  }, []);
 
   const dati = gpl.dati;
   const origine = partenza || gps.posizione; // da qui si calcolano distanze, mappa e lista
@@ -189,28 +198,21 @@ function Principale() {
         )}
       </View>
 
-      <View style={stili.ricerca}>
-        <BarraRicerca
-          valore={ricerca.testo}
-          onCambia={(t) => {
-            ricerca.setTesto(t);
-            if (ricerca.stato !== "fermo") ricerca.chiudi();
-          }}
-          onInvia={avviaRicerca}
-          onPulisci={ricerca.pulisci}
-          onFocus={() => setMostraRecenti(true)}
-          caricamento={ricerca.stato === "cerca"}
-          segnaposto="Cerca indirizzo o città"
-        />
-        <ElencoRisultati
-          titolo={
-            ricerca.stato === "risultati" ? "Risultati" : vociRicerca.length ? "Ricerche recenti" : undefined
-          }
-          voci={vociRicerca}
-          messaggio={messaggioRicerca}
-          onScegli={scegliLuogo}
-          style={stili.risultati}
-        />
+      <View style={stili.ricerca} onLayout={(e) => setYRicerca(e.nativeEvent.layout.y)}>
+        <View onLayout={(e) => setFondoBarra(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
+          <BarraRicerca
+            valore={ricerca.testo}
+            onCambia={(t) => {
+              ricerca.setTesto(t);
+              if (ricerca.stato !== "fermo") ricerca.chiudi();
+            }}
+            onInvia={avviaRicerca}
+            onPulisci={ricerca.pulisci}
+            onFocus={() => setMostraRecenti(true)}
+            caricamento={ricerca.stato === "cerca"}
+            segnaposto="Cerca indirizzo o città"
+          />
+        </View>
         <View style={stili.partenza}>
           <Testo variante="piccolo" colore="secondario" numberOfLines={1} style={{ flex: 1 }}>
             {partenza
@@ -307,6 +309,25 @@ function Principale() {
           </Testo>
         </SchedaScorrevole>
       </View>
+
+      {/* Risultati e ricerche recenti: stanno SOPRA la mappa, senza spostare il resto del layout.
+          Sono figli diretti della schermata (non della barra) per restare toccabili anche su Android. */}
+      {(vociRicerca.length > 0 || messaggioRicerca) && (
+        <ElencoRisultati
+          titolo={
+            ricerca.stato === "risultati" ? "Risultati" : vociRicerca.length ? "Ricerche recenti" : undefined
+          }
+          azione={
+            ricerca.stato !== "risultati" && vociRicerca.length
+              ? { titolo: "Cancella cronologia", onPress: ricerca.cancellaRecenti }
+              : undefined
+          }
+          voci={vociRicerca}
+          messaggio={messaggioRicerca}
+          onScegli={scegliLuogo}
+          style={[stili.risultati, { top: yRicerca + fondoBarra + spazi.xs }]}
+        />
+      )}
     </Schermata>
   );
 }
@@ -315,7 +336,18 @@ const creaStili = () =>
   StyleSheet.create({
     intestazione: { paddingHorizontal: spazi.lg, paddingTop: spazi.sm, gap: 2 },
     ricerca: { paddingHorizontal: spazi.lg, paddingTop: spazi.sm, gap: spazi.xs },
-    risultati: { marginTop: spazi.xs },
+    // Elenco che galleggia sopra mappa e scheda; `top` si calcola dalla posizione della barra
+    risultati: {
+      position: "absolute",
+      left: spazi.lg,
+      right: spazi.lg,
+      zIndex: 50,
+      elevation: 12,
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+    },
     partenza: { flexDirection: "row", alignItems: "center", gap: spazi.sm },
     // Una sola riga compatta: i pulsanti si dividono la larghezza, senza scorrimento
     filtri: { flexDirection: "row", paddingHorizontal: spazi.lg, paddingVertical: spazi.sm, gap: spazi.xs },

@@ -40,12 +40,44 @@ function creaEtichetta(a, testoCercato) {
   return parti.length ? [...new Set(parti)].join(", ") : testoCercato;
 }
 
+// Minuscolo e senza accenti, per confrontare i testi.
+function normalizza(testo) {
+  return String(testo ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+const PAROLE_GENERICHE = new Set([
+  "via", "viale", "piazza", "piazzale", "corso", "strada", "largo", "vicolo", "contrada",
+  "localita", "del", "della", "dello", "dei", "delle", "di", "da", "italia", "italy",
+]);
+
+// Il servizio del telefono è "largo di manica": a un testo senza senso risponde con un luogo a caso.
+// Per evitarlo tengo un risultato solo se almeno una parola scritta compare nell'indirizzo trovato.
+function parolePerControllo(testo) {
+  return normalizza(testo)
+    .split(/[^a-z0-9]+/)
+    .filter((p) => p.length >= 3 && !PAROLE_GENERICHE.has(p) && !/^\d+$/.test(p));
+}
+
+function indirizzoCoerente(parole, indirizzo, etichetta) {
+  if (parole.length === 0) return true; // solo parole generiche: non posso controllare
+  const campi = indirizzo
+    ? [indirizzo.name, indirizzo.street, indirizzo.city, indirizzo.district, indirizzo.subregion, indirizzo.region]
+    : [];
+  const testoTrovato = normalizza([...campi, etichetta].filter(Boolean).join(" "));
+  return parole.some((p) => testoTrovato.includes(p));
+}
+
 export async function cercaIndirizzo(testo) {
   const pulito = pulisciTesto(testo);
   if (pulito.length < 3) return [];
-  const query = /italia|italy/i.test(pulito) ? pulito : `${pulito}, Italia`;
+  const parole = parolePerControllo(pulito);
 
-  const trovati = await conTimeout(Location.geocodeAsync(query));
+  // Non aggiungo "Italia": il servizio la prende come luogo da cercare e risponde con un punto a caso.
+  // Il filtro sui confini italiani si fa sulle coordinate trovate.
+  const trovati = await conTimeout(Location.geocodeAsync(pulito));
   const inItalyList = trovati
     .filter((r) => inItalia(r.latitude, r.longitude))
     .slice(0, MAX_RISULTATI);
@@ -61,11 +93,13 @@ export async function cercaIndirizzo(testo) {
       } catch (e) {
         indirizzo = null;
       }
-      return { etichetta: creaEtichetta(indirizzo, pulito), lat: r.latitude, lon: r.longitude };
+      const etichetta = creaEtichetta(indirizzo, pulito);
+      if (!indirizzoCoerente(parole, indirizzo, etichetta)) return null;
+      return { etichetta, lat: r.latitude, lon: r.longitude };
     })
   );
 
-  // Toglie i doppioni con la stessa etichetta
+  // Toglie i risultati non coerenti e i doppioni con la stessa etichetta
   const visti = new Set();
-  return risultati.filter((r) => (visti.has(r.etichetta) ? false : visti.add(r.etichetta)));
+  return risultati.filter((r) => r && (visti.has(r.etichetta) ? false : visti.add(r.etichetta)));
 }

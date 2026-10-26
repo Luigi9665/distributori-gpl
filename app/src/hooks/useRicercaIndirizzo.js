@@ -53,6 +53,12 @@ export default function useRicercaIndirizzo() {
     });
   }, []);
 
+  // Cancella la cronologia delle ricerche, anche dal telefono
+  const cancellaRecenti = useCallback(() => {
+    setRecenti([]);
+    AsyncStorage.removeItem(CHIAVE_RECENTI).catch(() => {});
+  }, []);
+
   const chiudi = useCallback(() => {
     setRisultati([]);
     setStato("fermo");
@@ -63,5 +69,5 @@ export default function useRicercaIndirizzo() {
     chiudi();
   }, [chiudi]);
 
-  return { testo, setTesto, stato, risultati, recenti, cerca, ricorda, chiudi, pulisci };
+  return { testo, setTesto, stato, risultati, recenti, cerca, ricorda, cancellaRecenti, chiudi, pulisci };
 }
